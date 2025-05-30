@@ -1,0 +1,28 @@
+# KV Cache API Development Configuration
+# Settings optimized for development and testing
+
+# Network and Server Configuration
+local_hostname: "dev-machine"
+metadata_server: "127.0.0.1:2379"
+master_server_address: "127.0.0.1:50051"
+
+# Protocol and Device Settings
+protocol: "tcp"           # Use TCP for development
+device_name: "lo"          # Loopback interface
+
+# Memory Configuration (in bytes) - Smaller for development
+global_segment_size: 1073741824    # 1 GB = 1 * 1024 * 1024 * 1024
+local_buffer_size: 268435456       # 256 MB = 256 * 1024 * 1024
+
+# Backend Selection
+backend: "mooncake"        # Use mooncake backend
+
+# Logging Configuration
+log_level: "DEBUG"         # Verbose logging for development
+enable_metrics: true       # Enable metrics for debugging
+
+# Development-specific settings
+dev_mode: true
+auto_cleanup: true
+debug_traces: true
+mock_network_delays: false 

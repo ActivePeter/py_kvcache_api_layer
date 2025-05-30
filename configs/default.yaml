@@ -1,0 +1,27 @@
+# KV Cache API Configuration File
+# This file contains all configuration parameters for the KV cache system
+
+# Network and Server Configuration
+local_hostname: "localhost"
+metadata_server: "127.0.0.1:2379"
+master_server_address: "127.0.0.1:50051"
+
+# Protocol and Device Settings
+protocol: "tcp"          # tcp, udp, or ib
+device_name: "lo"         # Network interface name
+
+# Memory Configuration (in bytes)
+global_segment_size: 3355443200    # 3200 MB = 3200 * 1024 * 1024
+local_buffer_size: 536870912      # 512 MB = 512 * 1024 * 1024
+
+# Backend Selection
+backend: "mooncake"       # mooncake or rust
+
+# Logging Configuration
+log_level: "INFO"         # DEBUG, INFO, WARNING, ERROR, CRITICAL
+enable_metrics: false     # Enable performance metrics collection
+
+# Additional custom configuration can be added here
+# These will be stored in the extra_config dictionary
+# custom_timeout: 30
+# custom_retry_count: 3 

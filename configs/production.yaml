@@ -1,0 +1,29 @@
+# KV Cache API Production Configuration
+# Optimized settings for production deployment
+
+# Network and Server Configuration
+local_hostname: "kvcache-node-01"
+metadata_server: "etcd-cluster.internal:2379"
+master_server_address: "kvcache-master.internal:50051"
+
+# Protocol and Device Settings
+protocol: "ib"            # Use InfiniBand for high performance
+device_name: "mlx5_0"     # High-speed network interface
+
+# Memory Configuration (in bytes) - Larger for production
+global_segment_size: 10737418240   # 10 GB = 10 * 1024 * 1024 * 1024
+local_buffer_size: 2147483648      # 2 GB = 2 * 1024 * 1024 * 1024
+
+# Backend Selection
+backend: "mooncake"       # Use stable mooncake backend
+
+# Logging Configuration
+log_level: "WARNING"      # Less verbose logging in production
+enable_metrics: true      # Enable metrics for monitoring
+
+# Production-specific settings
+connection_timeout: 30
+retry_attempts: 5
+health_check_interval: 60
+enable_compression: true
+cache_eviction_policy: "lru" 
