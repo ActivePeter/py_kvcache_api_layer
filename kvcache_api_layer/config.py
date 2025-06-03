@@ -7,12 +7,7 @@ This module handles reading configuration from YAML files only.
 import os
 from typing import Dict, Any, Optional, Union
 from pathlib import Path
-
-try:
-    import yaml
-    HAS_YAML = True
-except ImportError:
-    HAS_YAML = False
+import yaml
 
 
 class KVCacheConfig:
@@ -73,12 +68,8 @@ class KVCacheConfig:
             
         Raises:
             FileNotFoundError: If config file doesn't exist
-            ImportError: If PyYAML is not installed
             ValueError: If config file format is invalid
         """
-        if not HAS_YAML:
-            raise ImportError("PyYAML is required to read YAML config files. Install with: pip install PyYAML")
-        
         config_path = Path(config_path)
         
         if not config_path.exists():
@@ -134,9 +125,6 @@ class KVCacheConfig:
         Args:
             config_path: Path to save configuration file
         """
-        if not HAS_YAML:
-            raise ImportError("PyYAML is required to write YAML files. Install with: pip install PyYAML")
-        
         config_path = Path(config_path)
         
         config_data = {

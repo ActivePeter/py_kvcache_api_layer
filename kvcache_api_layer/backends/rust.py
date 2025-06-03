@@ -2,10 +2,7 @@
 Rust backend implementation for the KV Cache API layer.
 
 This module provides a wrapper around a Rust-based KV store implementation
-to conform to the unified KV Cache API.
-
-Note: This is a template implementation. You'll need to replace the 
-import and RustKVStore references with your actual Rust bindings.
+using a HashMap for storage, implemented with PyO3 bindings.
 """
 
 from typing import Union, Optional, Any
@@ -13,27 +10,23 @@ from ..api import KVCacheStore
 from ..exceptions import StoreInitializationError, StorageError
 
 try:
-    # TODO: Replace with your actual Rust bindings import
-    # For example:
-    # from your_rust_module import RustKVStore
-    # or
-    # import your_rust_kv_bindings as rust_bindings
-    RustKVStore = None  # Placeholder
+    import kvcache_rust
+    RustKVStore = kvcache_rust.KVStore
+    RustStoreConfig = kvcache_rust.StoreConfig
 except ImportError:
     RustKVStore = None
+    RustStoreConfig = None
 
 
 class RustStore(KVCacheStore):
-    """Rust implementation of the KV Cache Store interface."""
+    """Rust implementation of the KV Cache Store interface using HashMap."""
     
     def __init__(self):
         """Initialize the Rust store wrapper."""
         if RustKVStore is None:
-            raise ImportError("Rust KV store is not available")
+            raise ImportError("Rust KV store is not available. Please install kvcache-rust module.")
         
-        # TODO: Initialize your Rust store
-        # self._store = RustKVStore()
-        self._store = None  # Placeholder
+        self._store = RustKVStore()
         self._initialized = False
     
     def setup(self, 
@@ -60,19 +53,17 @@ class RustStore(KVCacheStore):
             0 on success, non-zero error code on failure
         """
         try:
-            # TODO: Implement setup based on your Rust store interface
-            # retcode = self._store.setup(
-            #     local_hostname,
-            #     metadata_server,
-            #     global_segment_size,
-            #     local_buffer_size,
-            #     protocol,
-            #     device_name,
-            #     master_server_address
-            # )
+            config = RustStoreConfig(
+                local_hostname=local_hostname,
+                metadata_server=metadata_server,
+                global_segment_size=global_segment_size,
+                local_buffer_size=local_buffer_size,
+                protocol=protocol,
+                device_name=device_name,
+                master_server_address=master_server_address
+            )
             
-            # Placeholder implementation
-            retcode = 0  # Assume success for now
+            retcode = self._store.setup(config)
             
             if retcode == 0:
                 self._initialized = True
@@ -100,20 +91,12 @@ class RustStore(KVCacheStore):
             raise ValueError("At least one value must be provided")
         
         try:
-            # TODO: Implement based on your Rust store interface
             if len(values) == 1:
                 # Single value: use regular put
-                # return self._store.put(key, values[0])
-                raise NotImplementedError("Rust put() not implemented")
+                return self._store.put(key, values[0])
             else:
-                # Multiple values: use put_parts if available, otherwise concatenate
-                # if hasattr(self._store, 'put_parts'):
-                #     return self._store.put_parts(key, *values)
-                # else:
-                #     # Fallback: concatenate and use regular put
-                #     combined_data = b''.join(values)
-                #     return self._store.put(key, combined_data)
-                raise NotImplementedError("Rust put_parts() not implemented")
+                # Multiple values: use put_parts
+                return self._store.put_parts(key, list(values))
         except Exception as e:
             raise StorageError(f"Failed to put key '{key}': {e}")
     
@@ -131,9 +114,7 @@ class RustStore(KVCacheStore):
             raise StorageError("Store not initialized. Call setup() first.")
         
         try:
-            # TODO: Implement based on your Rust store interface
-            # return self._store.get(key)
-            raise NotImplementedError("Rust get() not implemented")
+            return self._store.get(key)
         except Exception as e:
             raise StorageError(f"Failed to get key '{key}': {e}")
     
@@ -151,10 +132,7 @@ class RustStore(KVCacheStore):
             raise StorageError("Store not initialized. Call setup() first.")
         
         try:
-            # TODO: Implement based on your Rust store interface
-            # Return the raw Rust buffer which should support buffer protocol
-            # return self._store.get_buffer(key)
-            raise NotImplementedError("Rust get_buffer() not implemented")
+            return self._store.get_buffer(key)
         except Exception as e:
             raise StorageError(f"Failed to get buffer for key '{key}': {e}")
     
@@ -172,9 +150,7 @@ class RustStore(KVCacheStore):
             raise StorageError("Store not initialized. Call setup() first.")
         
         try:
-            # TODO: Implement based on your Rust store interface
-            # return self._store.get_size(key)
-            raise NotImplementedError("Rust get_size() not implemented")
+            return self._store.get_size(key)
         except Exception as e:
             raise StorageError(f"Failed to get size for key '{key}': {e}")
     
@@ -192,9 +168,7 @@ class RustStore(KVCacheStore):
             raise StorageError("Store not initialized. Call setup() first.")
         
         try:
-            # TODO: Implement based on your Rust store interface
-            # return self._store.is_exist(key)
-            raise NotImplementedError("Rust is_exist() not implemented")
+            return self._store.is_exist(key)
         except Exception as e:
             raise StorageError(f"Failed to check existence of key '{key}': {e}")
     
@@ -212,9 +186,7 @@ class RustStore(KVCacheStore):
             raise StorageError("Store not initialized. Call setup() first.")
         
         try:
-            # TODO: Implement based on your Rust store interface
-            # return self._store.remove(key)
-            raise NotImplementedError("Rust remove() not implemented")
+            return self._store.remove(key)
         except Exception as e:
             raise StorageError(f"Failed to remove key '{key}': {e}")
     
@@ -229,9 +201,7 @@ class RustStore(KVCacheStore):
             return 0
         
         try:
-            # TODO: Implement based on your Rust store interface
-            # retcode = self._store.close()
-            retcode = 0  # Placeholder
+            retcode = self._store.close()
             
             if retcode == 0:
                 self._initialized = False
@@ -243,6 +213,40 @@ class RustStore(KVCacheStore):
     def native_store(self):
         """Access to the underlying Rust store for advanced usage."""
         return self._store
+    
+    # Additional helper methods specific to Rust implementation
+    
+    def len(self) -> int:
+        """Get the number of stored keys."""
+        if not self._initialized:
+            return 0
+        return self._store.len()
+    
+    def is_empty(self) -> bool:
+        """Check if the store is empty."""
+        if not self._initialized:
+            return True
+        return self._store.is_empty()
+    
+    def clear(self) -> int:
+        """Clear all stored data."""
+        if not self._initialized:
+            raise StorageError("Store not initialized. Call setup() first.")
+        
+        try:
+            return self._store.clear()
+        except Exception as e:
+            raise StorageError(f"Failed to clear store: {e}")
+    
+    def keys(self) -> list[str]:
+        """Get all keys in the store."""
+        if not self._initialized:
+            raise StorageError("Store not initialized. Call setup() first.")
+        
+        try:
+            return self._store.keys()
+        except Exception as e:
+            raise StorageError(f"Failed to get keys: {e}")
 
 
 # Example of how to implement Rust bindings integration:
