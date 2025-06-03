@@ -1,0 +1,49 @@
+{{- if .Values.backend_spec.mooncake_master }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kvcache-api-layer.fullname" . }}-mooncake-master
+  labels:
+    {{- include "kvcache-api-layer.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mooncake-master
+  {{- with include "kvcache-api-layer.annotations" . }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.backend_spec.mooncake_master.service.type }}
+  ports:
+  - port: {{ .Values.backend_spec.mooncake_master.service.port }}
+    targetPort: {{ .Values.backend_spec.mooncake_master.service.targetPort }}
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "kvcache-api-layer.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: mooncake-master
+{{- end }}
+
+{{- if .Values.backend_spec.mooncake_http_metadata_server }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kvcache-api-layer.fullname" . }}-mooncake-http-metadata
+  labels:
+    {{- include "kvcache-api-layer.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mooncake-http-metadata
+  {{- with include "kvcache-api-layer.annotations" . }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.backend_spec.mooncake_http_metadata_server.service.type }}
+  ports:
+  - port: {{ .Values.backend_spec.mooncake_http_metadata_server.service.port }}
+    targetPort: {{ .Values.backend_spec.mooncake_http_metadata_server.service.targetPort }}
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "kvcache-api-layer.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: mooncake-http-metadata
+{{- end }} 

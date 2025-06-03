@@ -1,0 +1,96 @@
+{{- if .Values.server_node }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "kvcache-api-layer.fullname" . }}-server
+  labels:
+    {{- include "kvcache-api-layer.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+  {{- with include "kvcache-api-layer.annotations" . }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "kvcache-api-layer.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        {{- include "kvcache-api-layer.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: server
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        workingDir: /app
+        env:
+        # 通过Downward API获取节点信息
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: NODE_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        # 添加节点IP映射环境变量
+        {{- include "kvcache-api-layer.nodeIPEnv" . | nindent 8 }}
+        command:
+        - /bin/bash
+        - -c
+        - |
+          # 切换到工作目录
+          cd /app
+          
+          # Install environment
+          {{- .Values.server_node.install_env | nindent 10 }}
+          
+          # 解析确定的节点IP
+          {{- include "kvcache-api-layer.resolveNodeIP" . | nindent 10 }}
+          
+          # Run entrypoint
+          {{- .Values.server_node.entrypoint | nindent 10 }}
+        volumeMounts:
+        - name: config
+          mountPath: /app/config_model.yaml
+          subPath: config_model.yaml
+          readOnly: true
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "kvcache-api-layer.fullname" . }}-config
+      {{- with .Values.server_node.affinity }}
+      affinity:
+        nodeAffinity:
+          {{- toYaml . | nindent 10 }}
+      {{- end }}
+{{- end }} 

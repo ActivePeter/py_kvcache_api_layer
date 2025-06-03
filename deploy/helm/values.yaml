@@ -1,0 +1,129 @@
+# Default values for kvcache-api-layer.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+image:
+  repository: python
+  pullPolicy: IfNotPresent
+  # 使用 Python 3.12.5 作为基础镜像
+  tag: "3.12.5"
+
+imagePullSecrets: []
+
+# fullnameOverride: 完全覆盖资源的完整名称
+# 示例: fullnameOverride: "production-cache-api" 会将所有资源使用此完整名称
+# 如果不设置，将使用默认的命名规则: {release-name}-{chart-name}
+fullnameOverride: ""
+
+
+# 节点IP映射表 (可选)
+# 用于确定节点名称到IP的映射关系
+nodeIPMapping:
+  # node-1: "192.168.1.10"
+  # node-2: "192.168.1.11" 
+  # node-3: "192.168.1.12"
+
+# spec 下的值均为可缺省
+backend_spec:
+  # mooncake 需要启动两个元数据服务
+  # 用于缓存元数据
+  # mooncake_master:
+  #   install_env: |
+  #     pip3 install mooncake-transfer-engine
+  #   entrypoint: |
+  #     mooncake_http_metadata_server
+  #   nodeAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #       nodeSelectorTerms:
+  #       - matchExpressions:
+  #         - key: kvcache.role
+  #           operator: In
+  #           values:
+  #           - client
+  #         - key: zone
+  #           operator: In
+  #           values:
+  #           - client-zone
+  #   service:
+  #     type: NodePort
+  #     port: 50051
+  #     targetPort: 60051
+  #   resources: {}
+
+  # 用于nixl通信元数据
+  # mooncake_http_metadata_server:
+  #   install_env: |
+  #     pip3 install mooncake-transfer-engine
+  #   entrypoint: |
+  #     mooncake_master
+  #   nodeAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #       nodeSelectorTerms:
+  #       - matchExpressions:
+  #         - key: kvcache.role
+  #           operator: In
+  #           values:
+  #           - client
+  #   resources: {}
+  #   service:
+  #     type: NodePort
+  #     port: 60052
+  #     targetPort: 60052
+
+# server 使用daemonset部署，使用affinity筛选节点
+server_node:
+  affinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kvcache.role
+          operator: In
+          values:
+          - server
+  install_env: |
+    pip3 install mooncake-transfer-engine
+
+  # entry dir: /app
+  entrypoint: |
+    echo "Running on node: $NODE_NAME with IP: $RESOLVED_NODE_IP"
+    
+    # construct config.yaml
+    echo "local_hostname: $RESOLVED_NODE_IP" > config.yaml
+    cat config_model.yaml >> config.yaml
+
+    git clone https://github.com/ActivePeter/py_kvcache_api_layer.git
+    cd py_kvcache_api_layer
+    # config is mapped by volume (constructed by helm)
+    python3 entrypoint/just_client.py --config ../config.yaml
+
+
+# KV Cache 配置
+# will be mapped to server_node's /app/config.yaml
+kvcache_config:
+  # 提供缓存空间
+  server:
+    protocal:
+      type: tcp
+    contribute_to_cluster_pool_size: 3355443200 # 3200 MB
+    log_level: INFO
+    mooncake_spec:
+      local_buffer_size: 1073741824 # 1024 MB
+      metadata_server: "127.0.0.1:60052"
+      master_server_address: "127.0.0.1:60051"
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+resources: {}
+
+autoscaling:
+  enabled: false
+
+# Additional labels to add to all resources
+commonLabels: {}
+
+# Additional annotations to add to all resources
+commonAnnotations: {} 

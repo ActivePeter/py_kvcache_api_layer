@@ -1,0 +1,67 @@
+KV Cache API Layer has been deployed!
+
+1. Application URLs:
+{{- if and .Values.backend_spec.mooncake_master (contains "NodePort" .Values.backend_spec.mooncake_master.service.type) }}
+
+To get the Mooncake Master URL:
+  export NODE_PORT_MASTER=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "kvcache-api-layer.fullname" . }}-mooncake-master)
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "Mooncake Master URL: http://$NODE_IP:$NODE_PORT_MASTER"
+{{- end }}
+
+{{- if and .Values.backend_spec.mooncake_http_metadata_server (contains "NodePort" .Values.backend_spec.mooncake_http_metadata_server.service.type) }}
+
+To get the Mooncake HTTP Metadata Server URL:
+  export NODE_PORT_HTTP_METADATA=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "kvcache-api-layer.fullname" . }}-mooncake-http-metadata)
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "Mooncake HTTP Metadata Server URL: http://$NODE_IP:$NODE_PORT_HTTP_METADATA"
+{{- end }}
+
+2. Check deployment status:
+  kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "kvcache-api-layer.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+3. View logs:
+{{- if .Values.backend_spec.mooncake_master }}
+
+Mooncake Master logs:
+  kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/component=mooncake-master" -f
+{{- end }}
+
+{{- if .Values.backend_spec.mooncake_http_metadata_server }}
+
+Mooncake HTTP Metadata Server logs:
+  kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/component=mooncake-http-metadata" -f
+{{- end }}
+
+{{- if .Values.server_node }}
+
+Server nodes logs:
+  kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/component=server" -f
+{{- end }}
+
+4. Configuration:
+  KV Cache configuration is stored in ConfigMap: {{ include "kvcache-api-layer.fullname" . }}-config
+  
+  View configuration:
+    kubectl get configmap {{ include "kvcache-api-layer.fullname" . }}-config --namespace {{ .Release.Namespace }} -o yaml
+
+5. Server nodes:
+{{- if .Values.server_node }}
+  Server nodes are deployed as DaemonSet and will run on nodes with the configured affinity.
+  
+  Check server node status:
+    kubectl get ds {{ include "kvcache-api-layer.fullname" . }}-server --namespace {{ .Release.Namespace }}
+{{- else }}
+  No server nodes configured.
+{{- end }}
+
+{{- if .Values.nodeIPMapping }}
+
+6. Node IP Mapping:
+  The following node IP mappings are configured:
+{{- range $nodeName, $nodeIP := .Values.nodeIPMapping }}
+  - {{ $nodeName }}: {{ $nodeIP }}
+{{- end }}
+{{- end }}
+
+For more information about this deployment, check the logs and status of the resources above. 

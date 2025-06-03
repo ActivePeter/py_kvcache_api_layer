@@ -1,0 +1,91 @@
+{{- if .Values.backend_spec.mooncake_master }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kvcache-api-layer.fullname" . }}-mooncake-master
+  labels:
+    {{- include "kvcache-api-layer.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mooncake-master
+  {{- with include "kvcache-api-layer.annotations" . }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kvcache-api-layer.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mooncake-master
+  template:
+    metadata:
+      labels:
+        {{- include "kvcache-api-layer.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mooncake-master
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: mooncake-master
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        # 通过Downward API获取节点信息
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: NODE_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          # Install environment
+          {{- .Values.backend_spec.mooncake_master.install_env | nindent 10 }}
+          
+          # Export node info for use in entrypoint
+          export NODE_NAME="$NODE_NAME"
+          export NODE_IP="$NODE_IP" 
+          export POD_IP="$POD_IP"
+          export POD_NAME="$POD_NAME"
+          export POD_NAMESPACE="$POD_NAMESPACE"
+          
+          # Run entrypoint
+          {{- .Values.backend_spec.mooncake_master.entrypoint | nindent 10 }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.backend_spec.mooncake_master.service.targetPort }}
+          protocol: TCP
+        resources:
+          {{- toYaml .Values.backend_spec.mooncake_master.resources | nindent 10 }}
+      {{- with .Values.backend_spec.mooncake_master.nodeAffinity }}
+      affinity:
+        nodeAffinity:
+          {{- toYaml . | nindent 10 }}
+      {{- end }}
+{{- end }} 

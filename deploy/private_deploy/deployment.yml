@@ -1,0 +1,99 @@
+# README
+# 将当前文件的文件夹lnk到telego工作空间
+
+comment: unify_kvcache 后端
+
+local_values:
+  install_env: |
+    # download from main node fileserver
+    curl -o mooncake_offline_packages.tar.gz http://${MAIN_NODE_IP}:8003//mooncake_offline_packages.tar.gz
+
+    # unpack
+    tar -xzvf mooncake_offline_packages.tar.gz
+
+    # install offline
+    pip3 install --no-index --find-links mooncake_offline_packages mooncake-transfer-engine
+  
+  overwrite-values.ymal: |
+    kvcache_config:
+      server:
+        mooncake_spec:
+          metadata_server: "10.127.16.12:60052"
+          master_server_address: "10.127.16.12:60051"
+    backend_spec:
+      mooncake_master:
+        install_env: |
+          ${install_env}
+        entrypoint: |
+          mooncake_http_metadata_server
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: usage
+                operator: In
+                values:
+                - infra
+        service:
+          type: NodePort
+          port: 50051
+          targetPort: 60051
+        resources: {}
+
+      mooncake_http_metadata_server:
+        install_env: |
+          ${install_env}
+        resources: {}
+        entrypoint: |
+          mooncake_master
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: usage
+                operator: In
+                values:
+                - infra
+        service:
+          type: NodePort
+          port: 8080
+          targetPort: 60052
+
+prepare:
+  - pyscript: |
+      import os, shutil
+      def run_cmd(cmd):
+        print("run cmd: ", cmd)
+        ret=os.system(cmd)
+        if ret != 0:
+          raise Exception(f"cmd {cmd} failed")
+      
+      # pack kvcache_api_layer to teledeploy/kvcache_api_layer.tar.gz
+      run_cmd("tar -czvf teledeploy/kvcache_api_layer.tar.gz kvcache_api_layer")
+      
+      # python 导出pip 离线安装包 pip3 install mooncake-transfer-engine
+      # 创建离线包目录
+      os.makedirs("teledeploy/mooncake_offline_packages", exist_ok=True)
+      
+      # 下载 mooncake-transfer-engine 及其所有依赖到离线包目录
+      run_cmd("pip3 download mooncake-transfer-engine -d teledeploy/mooncake_offline_packages")
+      
+      # 打包所有离线安装包
+      run_cmd("tar -czvf teledeploy/mooncake_offline_packages.tar.gz -C teledeploy/mooncake_offline_packages")
+      
+      print("离线安装包已导出到: teledeploy/mooncake_offline_packages.tar.gz")
+      print("使用方法:")
+      print("1. 解压包: tar -xzvf mooncake_offline_packages.tar.gz")
+      print("2. 离线安装: pip3 install --no-index --find-links mooncake_offline_packages mooncake-transfer-engine")
+      
+  - filemap:
+      content: ${overwrite-values.yaml}
+      path: tmp/overwrite-values.yaml
+      mode: 755
+
+helms:
+  unify_kvcache_server:
+    helm-dir: ../helm
+    namespace: tele-deployment
+    overwrite-config: tmp/overwrite-values.yaml
+

@@ -1,0 +1,62 @@
+{{- if .Values.backend_spec.mooncake_http_metadata_server }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kvcache-api-layer.fullname" . }}-mooncake-http-metadata
+  labels:
+    {{- include "kvcache-api-layer.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mooncake-http-metadata
+  {{- with include "kvcache-api-layer.annotations" . }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kvcache-api-layer.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mooncake-http-metadata
+  template:
+    metadata:
+      labels:
+        {{- include "kvcache-api-layer.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mooncake-http-metadata
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: mooncake-http-metadata
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          # Install environment
+          {{- .Values.backend_spec.mooncake_http_metadata_server.install_env | nindent 10 }}
+          
+          # Run entrypoint
+          {{- .Values.backend_spec.mooncake_http_metadata_server.entrypoint | nindent 10 }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.backend_spec.mooncake_http_metadata_server.service.targetPort }}
+          protocol: TCP
+        resources:
+          {{- toYaml .Values.backend_spec.mooncake_http_metadata_server.resources | nindent 10 }}
+      {{- with .Values.backend_spec.mooncake_http_metadata_server.nodeAffinity }}
+      affinity:
+        nodeAffinity:
+          {{- toYaml . | nindent 10 }}
+      {{- end }}
+{{- end }} 
