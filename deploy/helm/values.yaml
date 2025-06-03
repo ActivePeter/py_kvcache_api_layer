@@ -83,8 +83,6 @@ server_node:
   install_env: |
     pip3 install mooncake-transfer-engine
 
-  # entry dir: /app
-  entrypoint: |
     echo "Running on node: $NODE_NAME with IP: $RESOLVED_NODE_IP"
     
     # construct config.yaml
@@ -93,6 +91,9 @@ server_node:
 
     git clone https://github.com/ActivePeter/py_kvcache_api_layer.git
     cd py_kvcache_api_layer
+
+  # entry dir: /app
+  entrypoint: |
     # config is mapped by volume (constructed by helm)
     python3 entrypoint/just_client.py --config ../config.yaml
 
